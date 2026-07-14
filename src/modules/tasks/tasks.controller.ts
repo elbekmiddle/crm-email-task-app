@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiHeader, ApiTags } from '@nestjs/swagger';
 import { TenantGuard } from 'src/common/guards/tenant.guard';
 import { CurrentCompany } from 'src/common/decorators/current-company.decorator';
 import { CompanyDocument } from 'src/modules/companies/schemas/company.schema';
@@ -8,7 +8,7 @@ import { GetTasksQueryDto } from 'src/modules/tasks/dto/get-tasks-query.dto';
 import { ReviewTaskDto } from 'src/modules/tasks/dto/review-task.dto';
 
 @ApiTags('tasks')
-@ApiBearerAuth('company-token')
+@ApiHeader({ name: 'x-company-id', description: 'Tenant company Mongo _id', required: true })
 @UseGuards(TenantGuard)
 @Controller('tasks')
 export class TasksController {

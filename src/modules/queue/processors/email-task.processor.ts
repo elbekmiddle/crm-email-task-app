@@ -8,7 +8,7 @@ import {
   EmailMessageDocument,
   EmailProcessingStatus,
 } from 'src/modules/emails/schemas/email-message.schema';
-import { OpenAiService } from 'src/modules/ai/openai.service';
+import { GeminiService } from 'src/modules/ai/gemini.service';
 import { TasksService } from 'src/modules/tasks/tasks.service';
 import { TaskSource } from 'src/modules/tasks/schemas/task.schema';
 import { EMAIL_TASK_QUEUE } from 'src/modules/queue/queue.constants';
@@ -19,7 +19,7 @@ export class EmailTaskProcessor extends WorkerHost {
 
   constructor(
     @InjectModel(EmailMessage.name) private readonly emailModel: Model<EmailMessageDocument>,
-    private readonly openAiService: OpenAiService,
+    private readonly geminiService: GeminiService,
     private readonly tasksService: TasksService,
   ) {
     super();
@@ -42,7 +42,7 @@ export class EmailTaskProcessor extends WorkerHost {
     }
 
     try {
-      const analysis = await this.openAiService.analyzeEmail({
+      const analysis = await this.geminiService.analyzeEmail({
         from: email.from,
         to: email.to,
         subject: email.subject,

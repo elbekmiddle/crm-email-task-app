@@ -1,6 +1,6 @@
 # CRM Email → Task Automation
 
-Inbound email → AI classification → multi-tenant CRM task, built with NestJS + MongoDB + BullMQ/Redis + OpenAI.
+Inbound email → AI classification → multi-tenant CRM task, built with NestJS + MongoDB + BullMQ/Redis + Gemini.
 
 ## Stack
 
@@ -8,7 +8,7 @@ Inbound email → AI classification → multi-tenant CRM task, built with NestJS
 NestJS
  ├── Mongoose (MongoDB)
  ├── BullMQ (Redis) — async LLM processing
- ├── OpenAI API   — email classification
+ ├── Gemini API   — email classification
  ├── Swagger      — /docs
  └── Docker Compose (app + mongo + redis)
 ```
@@ -17,7 +17,7 @@ NestJS
 
 ```bash
 cp .env.example .env
-# fill in OPENAI_API_KEY and WEBHOOK_SECRET
+# fill in GEMINI_API_KEY and WEBHOOK_SECRET
 
 docker compose up --build
 ```
@@ -28,11 +28,13 @@ Once containers are up, seed a demo company + user:
 docker compose exec app npm run seed
 ```
 
-This prints a **Bearer token** for the demo company (`Acme Inc`) and the email
-addresses routed to it (`sales@acme.com`, `ali@acme.com`). Use that token for
+This prints the demo company's Mongo `_id` and the email addresses routed to
+it (`sales@acme.com`, `ali@acme.com`). There's no login/auth system in scope
+for this task — tenant is resolved from an `x-company-id` header (see
+DESIGN.md for why). Use the printed `_id` as that header's value for
 `GET /tasks` and `POST /tasks/:id/review`.
 
-Swagger docs: http://localhost:8080/docs
+Swagger docs: http://localhost:8080/api/v1/docs
 
 ## Simulating the fake email-provider
 
@@ -55,10 +57,10 @@ actual LLM classification + Task creation happens asynchronously in the BullMQ w
 
 ```bash
 curl "http://localhost:8080/tasks?status=pending&page=1&limit=20" \
-  -H "Authorization: Bearer <company token>"
+  -H "x-company-id: <companyId from seed>"
 
 curl -X POST http://localhost:8080/tasks/<taskId>/review \
-  -H "Authorization: Bearer <company token>" \
+  -H "x-company-id: <companyId from seed>" \
   -H "Content-Type: application/json" \
   -d '{"action":"accept"}'
 ```
@@ -84,7 +86,7 @@ EmailTaskProducer → BullMQ queue (Redis)
 EmailTaskProcessor (worker)
         │
         ▼
-OpenAiService.analyzeEmail → { isTask, title, description, dueDate, assigneeEmail }
+GeminiService.analyzeEmail → { isTask, title, description, dueDate, assigneeEmail }
         │
         ├── isTask=false → EmailMessage.status = processed, no Task
         │
@@ -92,6 +94,7 @@ OpenAiService.analyzeEmail → { isTask, title, description, dueDate, assigneeEm
                                   │
                                   ▼
                         GET /tasks · POST /tasks/:id/review
+                        (tenant resolved via x-company-id header)
 ```
 
 See `DESIGN.md` for scope/tradeoffs and `THREATS.md` for the security model.

@@ -9,8 +9,8 @@ export const envSchema = z.object({
   REDIS_HOST: z.string().min(1),
   REDIS_PORT: z.coerce.number().default(6379),
 
-  OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY majburiy'),
-  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY majburiy'),
+  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
 
   WEBHOOK_SECRET: z.string().min(1, 'WEBHOOK_SECRET majburiy'),
 });

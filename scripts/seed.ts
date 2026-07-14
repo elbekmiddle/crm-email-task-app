@@ -1,11 +1,11 @@
 /**
- * Demo seed: bitta company + user (bir nechta email bilan) yaratadi
- * va sinov uchun kerak bo'ladigan Bearer tokenni konsolga chiqaradi.
+ * Demo seed: bitta company + user (bir nechta email bilan) yaratadi.
+ * Chiqarilgan companyId'ni `x-company-id` header sifatida ishlating
+ * (GET /tasks, POST /tasks/:id/review uchun).
  *
  * Ishlatish: npm run seed
  */
 import * as mongoose from 'mongoose';
-import { randomBytes } from 'crypto';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -14,7 +14,7 @@ async function main() {
   await mongoose.connect(uri);
 
   const CompanySchema = new mongoose.Schema(
-    { name: String, apiToken: String },
+    { name: String },
     { collection: 'companies', timestamps: true },
   );
   const UserSchema = new mongoose.Schema(
@@ -25,8 +25,7 @@ async function main() {
   const CompanyModel = mongoose.model('SeedCompany', CompanySchema, 'companies');
   const UserModel = mongoose.model('SeedUser', UserSchema, 'users');
 
-  const apiToken = randomBytes(24).toString('hex');
-  const company = await CompanyModel.create({ name: 'Acme Inc', apiToken });
+  const company = await CompanyModel.create({ name: 'Acme Inc' });
 
   const user = await UserModel.create({
     name: 'Ali',
@@ -35,8 +34,8 @@ async function main() {
   });
 
   console.log('--- Seed complete ---');
-  console.log('Company:', company.name, company._id.toString());
-  console.log('Bearer token (use in Authorization header):', apiToken);
+  console.log('Company:', company.name);
+  console.log('x-company-id header value:', company._id.toString());
   console.log('User emails routed to this company:', user.emails.join(', '));
   console.log('---------------------');
 

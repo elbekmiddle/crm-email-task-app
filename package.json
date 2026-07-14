@@ -33,7 +33,7 @@
     "dotenv": "^17.4.2",
     "mongoose": "^8.9.5",
     "nanoid": "^3.3.7",
-    "openai": "^4.77.0",
+    "@google/generative-ai": "^0.21.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",

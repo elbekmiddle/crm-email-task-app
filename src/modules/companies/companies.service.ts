@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { randomBytes } from 'crypto';
 import { CompaniesRepository } from 'src/modules/companies/repositories/companies.repository';
 import { CompanyDocument } from 'src/modules/companies/schemas/company.schema';
 
@@ -7,8 +6,7 @@ import { CompanyDocument } from 'src/modules/companies/schemas/company.schema';
 export class CompaniesService {
   constructor(private readonly companiesRepository: CompaniesRepository) {}
 
-  async createCompany(name: string): Promise<CompanyDocument> {
-    const apiToken = randomBytes(24).toString('hex');
-    return this.companiesRepository.create({ name, apiToken });
+  createCompany(name: string): Promise<CompanyDocument> {
+    return this.companiesRepository.create({ name });
   }
 }

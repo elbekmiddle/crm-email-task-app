@@ -13,12 +13,14 @@ export function setupSwagger(app: INestApplication): void {
       'Inbound email -> AI classification -> multi-tenant CRM task automation',
     )
     .setVersion('1.0')
-    .addBearerAuth(
+    .addApiKey(
       {
-        type: 'http',
-        scheme: 'bearer',
+        type: 'apiKey',
+        in: 'header',
+        name: 'x-company-id',
+        description: "Tenant company's Mongo _id (mock tenant resolution, see DESIGN.md)",
       },
-      'company-token',
+      'company-id',
     )
     .build()
 

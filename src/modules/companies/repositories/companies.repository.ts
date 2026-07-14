@@ -16,8 +16,4 @@ export class CompaniesRepository {
   findById(id: string): Promise<CompanyDocument | null> {
     return this.companyModel.findById(id).exec();
   }
-
-  findByApiToken(apiToken: string): Promise<CompanyDocument | null> {
-    return this.companyModel.findOne({ apiToken }).exec();
-  }
 }
