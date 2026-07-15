@@ -42,6 +42,20 @@ type-confused LLM output — the actual mitigation THREATS.md #3 claims),
 (cross-tenant 404s, re-review 400s), and `TenantResolverService` (email→tenant
 routing, case-insensitivity). 18 tests, all passing — see `src/**/*.spec.ts`.
 
+**Second pass (post-local-edit regression check):** a later local edit
+re-introduced a duplicate dead file (`open-ai.service.ts`, unused — the real
+one wired into `AiModule` is `openai.service.ts`), and along the way
+`tsconfig.build.json` and 2 of the 4 spec files (`openai.service.spec.ts`,
+`tasks.service.spec.ts`) were dropped. Without `tsconfig.build.json`'s
+`rootDir`, `nest build` silently went back to emitting `dist/src/main.js`
+instead of `dist/main.js` — same "`npm run prod` 404s" bug as before, just
+reintroduced by omission rather than by a wrong import this time. All
+re-fixed; re-verified with a clean `npm install && npm run build && npm test`
+plus another real-Redis boot. Lesson: this class of bug (build config files
+silently missing from a zip/commit) doesn't show up in `npm run dev`, so it's
+worth a standing habit to test the `prod` path specifically before shipping,
+not just dev mode.
+
 An inbound-email-to-CRM-task pipeline, multi-tenant, with human review before a
 task is considered final:
 

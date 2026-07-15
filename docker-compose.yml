@@ -5,13 +5,13 @@ services:
       dockerfile: Dockerfile
     container_name: crm-task-app
     ports:
-      - "8080:8080"
+      - "${PORT:-8080}:${PORT:-8080}"
     env_file:
       - .env
     environment:
       MONGODB_URI: mongodb://mongo:27017/crm_tasks
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: ${REDIS_PORT:-6379}
     volumes:
       - .:/app
       - /app/node_modules
@@ -24,7 +24,7 @@ services:
     image: mongo:7
     container_name: crm-task-mongo
     ports:
-      - "27017:27017"
+      - "${MONGO_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
 
@@ -32,7 +32,7 @@ services:
     image: redis:7-alpine
     container_name: crm-task-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
 
