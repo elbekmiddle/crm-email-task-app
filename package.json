@@ -11,7 +11,7 @@
     "start": "nest start",
     "dev": "nest start --watch",
     "debug": "nest start --debug --watch",
-    "prod": "node dist/main",
+    "prod": "node -r tsconfig-paths/register dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "seed": "ts-node -r tsconfig-paths/register scripts/seed.ts",
     "test": "jest",
@@ -33,7 +33,7 @@
     "dotenv": "^17.4.2",
     "mongoose": "^8.9.5",
     "nanoid": "^3.3.7",
-    "@google/generative-ai": "^0.21.0",
+    "openai": "^4.104.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
@@ -64,12 +64,23 @@
     "typescript-eslint": "^8.20.0"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
-    "transform": { "^.+\\.(t|j)s$": "ts-jest" },
-    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
+    }
   }
 }

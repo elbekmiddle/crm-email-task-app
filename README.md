@@ -1,6 +1,6 @@
 # CRM Email → Task Automation
 
-Inbound email → AI classification → multi-tenant CRM task, built with NestJS + MongoDB + BullMQ/Redis + Gemini.
+Inbound email → AI classification → multi-tenant CRM task, built with NestJS + MongoDB + BullMQ/Redis + OpenAI.
 
 ## Stack
 
@@ -8,7 +8,7 @@ Inbound email → AI classification → multi-tenant CRM task, built with NestJS
 NestJS
  ├── Mongoose (MongoDB)
  ├── BullMQ (Redis) — async LLM processing
- ├── Gemini API   — email classification
+ ├── OpenAI API    — email classification (gpt-4o-mini, JSON-mode)
  ├── Swagger      — /docs
  └── Docker Compose (app + mongo + redis)
 ```
@@ -17,7 +17,7 @@ NestJS
 
 ```bash
 cp .env.example .env
-# fill in GEMINI_API_KEY and WEBHOOK_SECRET
+# fill in OPENAI_API_KEY and WEBHOOK_SECRET
 
 docker compose up --build
 ```
@@ -86,7 +86,7 @@ EmailTaskProducer → BullMQ queue (Redis)
 EmailTaskProcessor (worker)
         │
         ▼
-GeminiService.analyzeEmail → { isTask, title, description, dueDate, assigneeEmail }
+OpenAiService.analyzeEmail → { isTask, title, description, dueDate, assigneeEmail }
         │
         ├── isTask=false → EmailMessage.status = processed, no Task
         │

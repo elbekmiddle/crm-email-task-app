@@ -39,7 +39,7 @@ async function bootstrap() {
 🚀 CRM Task API started successfully
 
 API:     http://localhost:${port}${apiPrefix ? `/${apiPrefix}` : ''}
-Swagger: http://localhost:${port}/docs
+Swagger: http://localhost:${port}/${apiPrefix ? `${apiPrefix}/` : ''}docs
 `)
 }
 

@@ -3,14 +3,15 @@ import { z } from 'zod';
 export const envSchema = z.object({
   PORT: z.coerce.number().default(8080),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  API_PREFIX: z.string().default('api/v1'),
 
   MONGODB_URI: z.string().min(1, 'MONGODB_URI majburiy'),
 
   REDIS_HOST: z.string().min(1),
   REDIS_PORT: z.coerce.number().default(6379),
 
-  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY majburiy'),
-  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
+  OPENAI_API_KEY: z.string().min(1, 'OPENAI_API_KEY majburiy'),
+  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
 
   WEBHOOK_SECRET: z.string().min(1, 'WEBHOOK_SECRET majburiy'),
 });

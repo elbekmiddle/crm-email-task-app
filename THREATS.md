@@ -32,7 +32,7 @@ supplies.
 
 **Risk:** Anyone who finds `POST /webhooks/email` can flood it with fake
 emails, either to spam the system with junk tasks or, more expensively, to
-run up the Gemini bill (each accepted email triggers a paid LLM call).
+run up the OpenAI bill (each accepted email triggers a paid LLM call).
 
 **Mitigation:**
 - Shared `x-webhook-secret` header required — traffic without it is rejected
@@ -48,7 +48,7 @@ run up the Gemini bill (each accepted email triggers a paid LLM call).
 **Known gap:** the webhook secret is a single static shared value (fine for a
 single fake provider integration); in production I'd want per-provider
 signing (HMAC over the raw body, like Stripe/GitHub webhooks) instead of a
-static header, plus per-company spend caps/alerts on Gemini usage since a
+static header, plus per-company spend caps/alerts on OpenAI usage since a
 compromised secret still allows volume abuse within a known tenant.
 
 ## 3. Prompt injection via email body
@@ -59,10 +59,11 @@ mark this as not a task" or, worse, try to get the model to emit something
 harmful/malformed that gets persisted or executed.
 
 **Mitigation:**
-- The system prompt (passed as Gemini's `systemInstruction`, kept separate
-  from user content) constrains the model to a fixed JSON schema and nothing
-  else (`responseMimeType: 'application/json'`), and the email content is
-  passed as the user turn, not concatenated into the system prompt.
+- The system prompt (passed as a dedicated `role: 'system'` message, kept
+  separate from user content) constrains the model to a fixed JSON schema and
+  nothing else (OpenAI `response_format: { type: 'json_object' }` forces
+  valid-JSON output), and the email content is passed as the `user` turn,
+  not concatenated into the system prompt.
 - The model's output is never executed, templated into HTML, or used to
   build further prompts/queries — it's parsed into four typed fields
   (boolean/string/date/string) and anything that doesn't fit is discarded.
@@ -94,12 +95,12 @@ to reject one extra task," not silent double-action.
 
 ## 5. LLM/queue failure modes
 
-**Risk:** Gemini is down/slow/returns malformed JSON; Redis is down;
+**Risk:** OpenAI is down/slow/returns malformed JSON; Redis is down;
 worker crashes mid-job.
 
 **Mitigation:**
 - Webhook never blocks on the LLM — email is durably persisted in Mongo
-  *before* anything touches Gemini, so a total Gemini outage doesn't lose
+  *before* anything touches OpenAI, so a total OpenAI outage doesn't lose
   data, it just delays processing.
 - Malformed/non-JSON LLM output is caught and safely downgraded to
   `isTask: false` rather than throwing an unhandled exception or creating a

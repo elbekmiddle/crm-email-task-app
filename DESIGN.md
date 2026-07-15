@@ -2,6 +2,46 @@
 
 ## What I built
 
+## Pre-submission QA pass
+
+Before submitting, I ran this end-to-end (`npm install && npm run build && npm test`,
+plus a manual boot against a real local Redis) rather than just eyeballing the
+diff. That surfaced four real bugs, all fixed:
+
+1. **Broken LLM wiring (build-breaking).** An earlier pass had a half-finished
+   Gemini→OpenAI migration: `openai.service.ts` existed but `AiModule` and
+   `EmailTaskProcessor` still imported the old `GeminiService`; `env.schema.ts`
+   required `GEMINI_API_KEY`; and `openai` wasn't even in `package.json`
+   (`@google/generative-ai` was, unused by nothing). Net effect: `docker compose
+   up --build` would fail outright. Fixed to use OpenAI consistently, matching
+   the task brief ("OpenAI key provided") and `.env.example`'s own
+   `OPENAI_API_KEY`/`OPENAI_MODEL` naming; deleted the dead `gemini.service.ts`.
+2. **`npm run prod` was broken.** `tsconfig.build.json` had no `rootDir`, and
+   with `scripts/seed.ts` sitting next to `src/`, TypeScript inferred the
+   project root as `.` — so `nest build` emitted `dist/src/main.js`, not
+   `dist/main.js`. `npm run prod` (`node dist/main`) would 404 in any real
+   deploy; only `npm run dev` (which doesn't touch `dist/`) hid this. Fixed by
+   setting `rootDir: "./src"` and excluding `scripts/` from the build config.
+3. **Tests couldn't run at all.** Every file imports via the `src/*` path
+   alias (`import ... from 'src/modules/...'`), but the `jest` config in
+   `package.json` had no `moduleNameMapper` for it — `rootDir: "src"` alone
+   doesn't resolve that alias, so all 4 spec files failed with
+   `Cannot find module`. Added `"moduleNameMapper": { "^src/(.*)$":
+   "<rootDir>/$1" }`. (There were also zero test files before this pass —
+   see below.)
+4. **`EmailMessage.status` could show `failed` mid-retry.** The processor set
+   `status = 'failed'` inside the `catch` on *every* attempt, including ones
+   BullMQ was about to retry — contradicting THREATS.md's own claim that
+   `failed` means "final failure." Fixed to only persist `failed` when
+   `job.attemptsMade + 1 >= job.opts.attempts`.
+
+I also added unit tests for the four riskiest pieces of logic (previously
+untested): `OpenAiService`'s JSON parsing/validation (malformed/oversized/
+type-confused LLM output — the actual mitigation THREATS.md #3 claims),
+`TenantGuard` (missing/invalid/unknown `x-company-id`), `TasksService.reviewTask`
+(cross-tenant 404s, re-review 400s), and `TenantResolverService` (email→tenant
+routing, case-insensitivity). 18 tests, all passing — see `src/**/*.spec.ts`.
+
 An inbound-email-to-CRM-task pipeline, multi-tenant, with human review before a
 task is considered final:
 
@@ -9,9 +49,9 @@ task is considered final:
   shared webhook secret, resolves which company the email belongs to (via the
   `to` address → `User.emails[]` → `companyId`), persists the raw email, and
   enqueues it for analysis. Responds `202` immediately — it never waits on the
-  LLM call, so a slow/unavailable Gemini API can't make the provider's webhook
+  LLM call, so a slow/unavailable OpenAI API can't make the provider's webhook
   time out or retry-storm us.
-- A **BullMQ worker** (`EmailTaskProcessor`) picks up the job, calls **Gemini**
+- A **BullMQ worker** (`EmailTaskProcessor`) picks up the job, calls **OpenAI**
   with a strict JSON-only prompt, and — if the email is judged actionable —
   creates a `Task` scoped to `companyId`. Failures are retried with
   exponential backoff (3 attempts) and the source `EmailMessage` is marked
@@ -58,7 +98,7 @@ change, since every controller/service only depends on `req.company`.
 - **Idempotency / dedup on the webhook.** If the fake provider retries the
   same email, we'd create a second `EmailMessage` and, potentially, a second
   Task. Documented as a known gap rather than building a dedup key.
-- **Assignee resolution.** `assigneeEmail` from Gemini is stored as-is; I did
+- **Assignee resolution.** `assigneeEmail` from OpenAI is stored as-is; I did
   not validate it against `User.emails[]` / auto-link it to a `User` document.
   Cheap to add, cut for time.
 - **UI.** Not requested; API-only per the task brief.
@@ -78,13 +118,13 @@ change, since every controller/service only depends on `req.company`.
   layer than in application code.
 - **BullMQ/Redis is not strictly required** by the brief but the async
   boundary is the right place to put a slow, sometimes-flaky external call
-  (Gemini) so the webhook stays fast and retryable independently of the HTTP
+  (OpenAI) so the webhook stays fast and retryable independently of the HTTP
   request/response cycle.
 - **Storing the raw email** (`EmailMessage`) instead of only the derived
   `Task` costs a bit of storage but buys real debuggability: I can see exactly
   what the LLM saw, re-run analysis on failures, and audit "why was this task
   created."
-- **LLM output is not trusted blindly.** `GeminiService` parses and validates
+- **LLM output is not trusted blindly.** `OpenAiService` parses and validates
   the model's JSON (booleans/strings/date-parseable), and anything malformed
   degrades to `isTask: false` rather than throwing or creating garbage tasks.
   A `Task` created from an LLM is always `status = pending` until a human
@@ -101,11 +141,14 @@ change, since every controller/service only depends on `req.company`.
 3. Validate/auto-link `assigneeEmail` to an existing `User` in the same
    company; reject or null it out otherwise instead of storing an arbitrary
    string.
-4. Rate-limit and monitor Gemini spend per tenant (an abusive/compromised
+4. Rate-limit and monitor OpenAI spend per tenant (an abusive/compromised
    sender could otherwise drive unbounded LLM cost — see THREATS.md).
 5. Add a dead-letter queue view / admin endpoint for `failed` `EmailMessage`s
    so operators can see and manually retry/inspect stuck emails.
 6. Real integration tests (webhook → queue → task, with BullMQ in test mode
-   and Gemini mocked) instead of relying on manual curl testing.
+   and OpenAI mocked) instead of relying on manual curl testing. A first pass at
+   this now exists (co-located `*.spec.ts` files under `src/`) — unit-level for
+   the riskiest logic (LLM response parsing, tenant resolution, review
+   idempotency); the webhook→queue→task integration path is still manual-tested only.
 7. Structured logging/tracing across the webhook → queue → worker boundary
    (correlation ID per email) to make production debugging tractable.

@@ -3,7 +3,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
-import envConfig from 'src/config/env/env.config';
 import { validateEnv } from 'src/config/env/env.schema';
 import { getMongooseConfig } from 'src/config/database/mongoose.config';
 import { CompaniesModule } from 'src/modules/companies/companies.module';
@@ -13,6 +12,7 @@ import { EmailsModule } from 'src/modules/emails/emails.module';
 import { AiModule } from 'src/modules/ai/ai.module';
 import { QueueModule } from 'src/modules/queue/queue.module';
 import { TasksModule } from 'src/modules/tasks/tasks.module';
+import envConfig from './config/env/env.config'
 
 @Module({
   imports: [

@@ -8,7 +8,7 @@ import {
   EmailMessageDocument,
   EmailProcessingStatus,
 } from 'src/modules/emails/schemas/email-message.schema';
-import { GeminiService } from 'src/modules/ai/gemini.service';
+import { OpenAiService } from 'src/modules/ai/openai.service';
 import { TasksService } from 'src/modules/tasks/tasks.service';
 import { TaskSource } from 'src/modules/tasks/schemas/task.schema';
 import { EMAIL_TASK_QUEUE } from 'src/modules/queue/queue.constants';
@@ -19,7 +19,7 @@ export class EmailTaskProcessor extends WorkerHost {
 
   constructor(
     @InjectModel(EmailMessage.name) private readonly emailModel: Model<EmailMessageDocument>,
-    private readonly geminiService: GeminiService,
+    private readonly openAiService: OpenAiService,
     private readonly tasksService: TasksService,
   ) {
     super();
@@ -42,7 +42,7 @@ export class EmailTaskProcessor extends WorkerHost {
     }
 
     try {
-      const analysis = await this.geminiService.analyzeEmail({
+      const analysis = await this.openAiService.analyzeEmail({
         from: email.from,
         to: email.to,
         subject: email.subject,
@@ -65,9 +65,26 @@ export class EmailTaskProcessor extends WorkerHost {
       email.status = EmailProcessingStatus.PROCESSED;
       await email.save();
     } catch (err) {
-      email.status = EmailProcessingStatus.FAILED;
-      email.failureReason = err instanceof Error ? err.message : String(err);
-      await email.save();
+      // Faqat OXIRGI urinishda 'failed' deb belgilaymiz — aks holda
+      // 1-chi urinish muvaffaqiyatsiz bo'lib, 2-chi/3-chi hali navbatda
+      // turgan holatda ham status vaqtincha "failed" bo'lib qolar edi,
+      // bu DESIGN.md/THREATS.md'da va'da qilingan xatti-harakatga zid.
+      const maxAttempts = job.opts.attempts ?? 1;
+      const attemptNumber = job.attemptsMade + 1;
+      const isLastAttempt = attemptNumber >= maxAttempts;
+
+      if (isLastAttempt) {
+        email.status = EmailProcessingStatus.FAILED;
+        email.failureReason = err instanceof Error ? err.message : String(err);
+        await email.save();
+      } else {
+        this.logger.warn(
+          `Email ${emailId} analysis attempt ${attemptNumber}/${maxAttempts} failed, will retry: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+
       // Qayta throw qilamiz -> BullMQ retry/backoff siyosati ishga tushadi.
       throw err;
     }
